@@ -3,101 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>의료장비 점검 현황</title>
+    <title>의료장비 실시간 AR 점검</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        .container { background-color: #fff; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.08); padding: 30px; max-width: 500px; width: 100%; text-align: center; animation: fadeIn 0.8s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        h1 { color: #007bff; margin-bottom: 25px; font-size: 1.8em; font-weight: 600; }
-        .info-item { text-align: left; margin-bottom: 15px; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .info-item:last-child { border-bottom: none; margin-bottom: 0; }
-        .label { font-weight: bold; color: #555; margin-bottom: 5px; display: block; font-size: 0.9em; }
-        .value { font-size: 1.1em; color: #000; word-break: break-all; }
-        .status { font-size: 1.5em; font-weight: bold; margin-top: 20px; padding: 10px; border-radius: 8px; color: #fff; }
-        .status.completed { background-color: #28a745; } /* Green */
-        .status.pending { background-color: #ffc107; color: #333; } /* Yellow */
-        .status.overdue { background-color: #dc3545; } /* Red */
-        .loading { font-size: 1.1em; color: #666; margin-top: 20px; }
-        .error { color: #dc3545; margin-top: 20px; font-weight: bold; }
+        /* 카메라 화면을 배경으로 꽉 채웁니다 */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }
+        #camera-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+
+        /* 정보 카드를 카메라 위에 둥둥 뜨게 만듭니다 */
+        .ar-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            width: 85%;
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.9); /* 약간 투명하게 */
+            backdrop-filter: blur(10px); /* 배경 흐림 효과로 고급스럽게 */
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            border: 2px solid #007bff;
+            animation: floating 3s ease-in-out infinite; /* 둥둥 뜨는 애니메이션 */
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translate(-50%, -52%); }
+            50% { transform: translate(-50%, -48%); }
+        }
+
+        h1 { font-size: 1.4em; color: #007bff; margin: 0 0 15px 0; }
+        .status-badge { display: inline-block; padding: 8px 20px; border-radius: 50px; font-weight: bold; color: white; margin-bottom: 20px; font-size: 1.2em; }
+        .completed { background: #28a745; }
+        .pending { background: #ffc107; color: #333; }
+        .overdue { background: #dc3545; }
+
+        .info-grid { text-align: left; font-size: 0.95em; line-height: 1.6; }
+        .info-row { display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding: 8px 0; }
+        .label { color: #666; font-weight: bold; }
+        .value { color: #000; }
+        
+        .loading-text { color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; font-size: 1.2em; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>의료장비 점검 현황</h1>
-        <div id="asset-info">
-            <p class="loading">정보를 불러오는 중...</p>
+    <div id="camera-container">
+        <video id="webcam" autoplay playsinline></video>
+    </div>
+
+    <div id="loading" class="loading-text">장비 정보를 매칭 중...</div>
+
+    <div id="ar-card" class="ar-overlay" style="display: none;">
+        <h1 id="asset-name">의료장비 정보</h1>
+        <div id="status-badge" class="status-badge">확인 중</div>
+        
+        <div class="info-grid">
+            <div class="info-row"><span class="label">자산번호</span><span id="asset-num" class="value"></span></div>
+            <div class="info-row"><span class="label">부서</span><span id="asset-dept" class="value"></span></div>
+            <div class="info-row"><span class="label">점검일</span><span id="asset-date" class="value"></span></div>
+            <div class="info-row"><span class="label">담당자</span><span id="asset-user" class="value"></span></div>
         </div>
     </div>
 
     <script>
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv'; // ✨1단계에서 복사한 CSV 링크를 여기에 넣습니다✨
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            const params = new URLSearchParams(window.location.search);
-            const assetNumber = params.get('asset'); // URL에서 asset=H5D012000004를 찾습니다.
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv';
 
-            if (!assetNumber) {
-                document.getElementById('asset-info').innerHTML = '<p class="error">자산번호가 URL에 없습니다.</p>';
-                return;
+        // 1. 카메라 켜기
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                document.getElementById('webcam').srcObject = stream;
+            } catch (err) {
+                console.error("카메라를 켤 수 없습니다:", err);
+                alert("카메라 권한이 필요합니다.");
             }
+        }
 
-            fetch(CSV_URL)
-                .then(response => response.text())
-                .then(csvText => {
-                    const lines = csvText.split('\n');
-                    const headers = lines[0].split(',').map(h => h.trim()); // 헤더 파싱
-                    
-                    let foundAsset = null;
-                    for (let i = 1; i < lines.length; i++) {
-                        const data = lines[i].split(',').map(d => d.trim());
-                        if (data[0] === assetNumber) { // 첫 번째 열(자산번호)과 매칭
-                            foundAsset = {};
-                            headers.forEach((header, index) => {
-                                foundAsset[header] = data[index] || '-'; // 데이터가 없으면 '-' 표시
-                            });
-                            break;
-                        }
+        // 2. 데이터 불러오기
+        async function loadAssetData() {
+            const params = new URLSearchParams(window.location.search);
+            const assetNumber = params.get('asset');
+
+            if (!assetNumber) return;
+
+            try {
+                const response = await fetch(CSV_URL);
+                const csvText = await response.text();
+                const lines = csvText.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                let foundAsset = null;
+                for (let i = 1; i < lines.length; i++) {
+                    const data = lines[i].split(',').map(d => d.trim());
+                    if (data[0] === assetNumber) {
+                        foundAsset = {};
+                        headers.forEach((header, index) => { foundAsset[header] = data[index] || '-'; });
+                        break;
                     }
+                }
 
-                    const infoDiv = document.getElementById('asset-info');
-                    if (foundAsset) {
-                        const today = new Date();
-                        const inspectionDateStr = foundAsset['점검일']; // '점검일' 헤더 사용
-                        const inspectionDate = inspectionDateStr !== '-' ? new Date(inspectionDateStr) : null;
-                        
-                        let statusClass = 'pending';
-                        let statusText = '미점검';
+                if (foundAsset) {
+                    renderCard(foundAsset);
+                }
+            } catch (err) {
+                console.error("데이터 로드 실패:", err);
+            }
+        }
 
-                        if (inspectionDate) {
-                            const oneYearLater = new Date(inspectionDate);
-                            oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+        function renderCard(asset) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('ar-card').style.display = 'block';
 
-                            if (today < oneYearLater) {
-                                statusClass = 'completed';
-                                statusText = '점검 완료';
-                            } else {
-                                statusClass = 'overdue';
-                                statusText = '점검 기한 초과';
-                            }
-                        }
+            document.getElementById('asset-name').innerText = asset['품명'];
+            document.getElementById('asset-num').innerText = asset['자산번호'];
+            document.getElementById('asset-dept').innerText = asset['사용부서(자산)'];
+            document.getElementById('asset-date').innerText = asset['점검일'];
+            document.getElementById('asset-user').innerText = asset['점검자'];
 
-                        infoDiv.innerHTML = `
-                            <div class="status ${statusClass}">${statusText}</div>
-                            <div class="info-item"><span class="label">자산번호</span><span class="value">${foundAsset['자산번호']}</span></div>
-                            <div class="info-item"><span class="label">장비명</span><span class="value">${foundAsset['품명']}</span></div>
-                            <div class="info-item"><span class="label">사용 부서</span><span class="value">${foundAsset['사용부서(자산)']}</span></div>
-                            <div class="info-item"><span class="label">최근 점검일</span><span class="value">${foundAsset['점검일']}</span></div>
-                            <div class="info-item"><span class="label">점검 주체</span><span class="value">${foundAsset['점검자']}</span></div>
-                        `;
-                    } else {
-                        infoDiv.innerHTML = `<p class="error">자산번호 ${assetNumber}를 찾을 수 없습니다.</p>`;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching CSV:', error);
-                    document.getElementById('asset-info').innerHTML = '<p class="error">데이터를 불러오는 데 실패했습니다.</p>';
-                });
-        });
+            // 상태 체크 로직
+            const badge = document.getElementById('status-badge');
+            const today = new Date();
+            const lastDate = asset['점검일'] !== '-' ? new Date(asset['점검일']) : null;
+
+            if (!lastDate) {
+                badge.innerText = "미점검";
+                badge.className = "status-badge pending";
+            } else {
+                const limitDate = new Date(lastDate);
+                limitDate.setFullYear(limitDate.getFullYear() + 1);
+                if (today < limitDate) {
+                    badge.innerText = "점검 완료";
+                    badge.className = "status-badge completed";
+                } else {
+                    badge.innerText = "기한 초과";
+                    badge.className = "status-badge overdue";
+                }
+            }
+        }
+
+        startCamera();
+        loadAssetData();
     </script>
 </body>
 </html>
