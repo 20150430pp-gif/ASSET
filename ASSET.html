@@ -3,148 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>의료장비 실시간 AR 점검</title>
+    <title>Smart Asset HUD</title>
     <style>
-        /* 카메라 화면을 배경으로 꽉 채웁니다 */
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Orbitron', sans-serif; }
         #camera-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        video { width: 100%; height: 100%; object-fit: cover; }
+        video { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.7) contrast(1.2); }
 
-        /* 정보 카드를 카메라 위에 둥둥 뜨게 만듭니다 */
-        .ar-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-            width: 85%;
-            max-width: 400px;
-            background: rgba(255, 255, 255, 0.9); /* 약간 투명하게 */
-            backdrop-filter: blur(10px); /* 배경 흐림 효과로 고급스럽게 */
-            border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            text-align: center;
-            border: 2px solid #007bff;
-            animation: floating 3s ease-in-out infinite; /* 둥둥 뜨는 애니메이션 */
+        /* HUD 레이아웃 */
+        .hud-wrapper {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 10; width: 90%; display: flex; flex-direction: column; align-items: center;
+            gap: 20px; pointer-events: none;
         }
 
-        @keyframes floating {
-            0%, 100% { transform: translate(-50%, -52%); }
-            50% { transform: translate(-50%, -48%); }
+        .device-title {
+            color: #00f2ff; text-shadow: 0 0 10px #00f2ff; font-size: 1.5em; font-weight: bold;
+            margin-bottom: 10px; text-align: center; border-bottom: 2px solid #00f2ff; padding-bottom: 5px;
         }
 
-        h1 { font-size: 1.4em; color: #007bff; margin: 0 0 15px 0; }
-        .status-badge { display: inline-block; padding: 8px 20px; border-radius: 50px; font-weight: bold; color: white; margin-bottom: 20px; font-size: 1.2em; }
-        .completed { background: #28a745; }
-        .pending { background: #ffc107; color: #333; }
-        .overdue { background: #dc3545; }
+        .cards-container { display: flex; gap: 15px; width: 100%; justify-content: center; }
 
-        .info-grid { text-align: left; font-size: 0.95em; line-height: 1.6; }
-        .info-row { display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding: 8px 0; }
-        .label { color: #666; font-weight: bold; }
-        .value { color: #000; }
-        
-        .loading-text { color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; font-size: 1.2em; }
+        /* 신박한 카드 디자인 */
+        .hud-card {
+            flex: 1; max-width: 160px; height: 160px;
+            background: rgba(0, 20, 30, 0.6);
+            border: 2px solid #00f2ff; border-radius: 15px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px); box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .hud-card.risk { border-color: var(--risk-color); box-shadow: 0 0 20px var(--risk-shadow); }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .card-label { font-size: 0.8em; color: rgba(255,255,255,0.7); margin-bottom: 10px; }
+        .card-value { font-size: 1.6em; font-weight: 900; text-align: center; }
+
+        /* 등급별 색상 정의 */
+        :root { --risk-color: #00f2ff; --risk-shadow: rgba(0, 242, 255, 0.3); }
+        .status-ok { color: #00ff88; text-shadow: 0 0 10px #00ff88; }
+        .status-warn { color: #ff3c00; text-shadow: 0 0 10px #ff3c00; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="camera-container">
-        <video id="webcam" autoplay playsinline></video>
-    </div>
+    <div id="camera-container"><video id="webcam" autoplay playsinline></video></div>
 
-    <div id="loading" class="loading-text">장비 정보를 매칭 중...</div>
-
-    <div id="ar-card" class="ar-overlay" style="display: none;">
-        <h1 id="asset-name">의료장비 정보</h1>
-        <div id="status-badge" class="status-badge">확인 중</div>
+    <div class="hud-wrapper" id="hud" style="display: none;">
+        <div class="device-title" id="asset-name">SCANNING...</div>
         
-        <div class="info-grid">
-            <div class="info-row"><span class="label">자산번호</span><span id="asset-num" class="value"></span></div>
-            <div class="info-row"><span class="label">부서</span><span id="asset-dept" class="value"></span></div>
-            <div class="info-row"><span class="label">점검일</span><span id="asset-date" class="value"></span></div>
-            <div class="info-row"><span class="label">담당자</span><span id="asset-user" class="value"></span></div>
+        <div class="cards-container">
+            <div class="hud-card">
+                <div class="card-label">INSPECTION</div>
+                <div id="status-val" class="card-value">WAIT</div>
+            </div>
+
+            <div id="risk-card" class="hud-card risk">
+                <div class="card-label">RISK LEVEL</div>
+                <div id="risk-val" class="card-value">-</div>
+            </div>
         </div>
     </div>
 
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv';
 
-        // 1. 카메라 켜기
         async function startCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                document.getElementById('webcam').srcObject = stream;
-            } catch (err) {
-                console.error("카메라를 켤 수 없습니다:", err);
-                alert("카메라 권한이 필요합니다.");
-            }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('webcam').srcObject = stream;
         }
 
-        // 2. 데이터 불러오기
-        async function loadAssetData() {
+        async function loadData() {
             const params = new URLSearchParams(window.location.search);
-            const assetNumber = params.get('asset');
+            const assetID = params.get('asset');
+            if (!assetID) return;
 
-            if (!assetNumber) return;
+            const res = await fetch(CSV_URL);
+            const text = await res.text();
+            const rows = text.split('\n').map(r => r.split(',').map(c => c.trim()));
+            const header = rows[0];
+            const data = rows.find(r => r[0] === assetID);
 
-            try {
-                const response = await fetch(CSV_URL);
-                const csvText = await response.text();
-                const lines = csvText.split('\n');
-                const headers = lines[0].split(',').map(h => h.trim());
+            if (data) {
+                document.getElementById('hud').style.display = 'flex';
+                document.getElementById('asset-name').innerText = data[3]; // 품명
                 
-                let foundAsset = null;
-                for (let i = 1; i < lines.length; i++) {
-                    const data = lines[i].split(',').map(d => d.trim());
-                    if (data[0] === assetNumber) {
-                        foundAsset = {};
-                        headers.forEach((header, index) => { foundAsset[header] = data[index] || '-'; });
-                        break;
-                    }
-                }
-
-                if (foundAsset) {
-                    renderCard(foundAsset);
-                }
-            } catch (err) {
-                console.error("데이터 로드 실패:", err);
-            }
-        }
-
-        function renderCard(asset) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('ar-card').style.display = 'block';
-
-            document.getElementById('asset-name').innerText = asset['품명'];
-            document.getElementById('asset-num').innerText = asset['자산번호'];
-            document.getElementById('asset-dept').innerText = asset['사용부서(자산)'];
-            document.getElementById('asset-date').innerText = asset['점검일'];
-            document.getElementById('asset-user').innerText = asset['점검자'];
-
-            // 상태 체크 로직
-            const badge = document.getElementById('status-badge');
-            const today = new Date();
-            const lastDate = asset['점검일'] !== '-' ? new Date(asset['점검일']) : null;
-
-            if (!lastDate) {
-                badge.innerText = "미점검";
-                badge.className = "status-badge pending";
-            } else {
-                const limitDate = new Date(lastDate);
-                limitDate.setFullYear(limitDate.getFullYear() + 1);
-                if (today < limitDate) {
-                    badge.innerText = "점검 완료";
-                    badge.className = "status-badge completed";
+                // 점검 상태 로직 (점검일 기준)
+                const statusVal = document.getElementById('status-val');
+                if (data[6] !== '-') {
+                    statusVal.innerText = "DONE";
+                    statusVal.className = "card-value status-ok";
                 } else {
-                    badge.innerText = "기한 초과";
-                    badge.className = "status-badge overdue";
+                    statusVal.innerText = "MISS";
+                    statusVal.className = "card-value status-warn";
                 }
+
+                // 위험 등급 로직 (H, M, L, N) - 엑셀의 '위험등급' 열 번호를 확인하세요.
+                // 아래 [4]는 예시입니다. 엑셀에서 위험등급이 몇번째 칸인지 세어보고 숫자를 바꾸세요.
+                const risk = data[4]; 
+                const riskVal = document.getElementById('risk-val');
+                const riskCard = document.getElementById('risk-card');
+                
+                let color = "#00ff88"; // 기본 N (초록)
+                if (risk === 'H') color = "#ff0044"; // 빨강
+                else if (risk === 'M') color = "#ffcc00"; // 노랑
+                else if (risk === 'L') color = "#00ccff"; // 파랑
+
+                riskVal.innerText = risk;
+                riskVal.style.color = color;
+                riskVal.style.textShadow = `0 0 10px ${color}`;
+                riskCard.style.setProperty('--risk-color', color);
+                riskCard.style.setProperty('--risk-shadow', color + '44');
             }
         }
 
         startCamera();
-        loadAssetData();
+        loadData();
     </script>
 </body>
 </html>
