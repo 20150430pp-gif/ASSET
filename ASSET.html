@@ -3,81 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Asset HUD</title>
+    <title>Equipment Management System</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Orbitron', sans-serif; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         #camera-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        video { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.7) contrast(1.2); }
+        video { width: 100%; height: 100%; object-fit: cover; }
 
-        /* HUD 레이아웃 */
-        .hud-wrapper {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 10; width: 90%; display: flex; flex-direction: column; align-items: center;
-            gap: 20px; pointer-events: none;
+        /* AR 메인 카드 디자인 */
+        .ar-card {
+            position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 10; width: 85%; max-width: 380px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            overflow: hidden; animation: slideUp 0.5s ease-out;
         }
 
-        .device-title {
-            color: #00f2ff; text-shadow: 0 0 10px #00f2ff; font-size: 1.5em; font-weight: bold;
-            margin-bottom: 10px; text-align: center; border-bottom: 2px solid #00f2ff; padding-bottom: 5px;
+        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, -40%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+
+        /* 상단 등급 스티커 공간 */
+        .card-header { position: relative; padding: 20px; border-bottom: 1px dashed #eee; }
+        
+        /* 우측 상단 위험등급 스티커 */
+        .risk-sticker {
+            position: absolute; top: 15px; right: 15px;
+            width: 45px; height: 45px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: 900; font-size: 1.2em;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
 
-        .cards-container { display: flex; gap: 15px; width: 100%; justify-content: center; }
+        .asset-name { font-size: 1.3em; font-weight: bold; color: #1a1a1a; margin-right: 50px; line-height: 1.2; }
 
-        /* 신박한 카드 디자인 */
-        .hud-card {
-            flex: 1; max-width: 160px; height: 160px;
-            background: rgba(0, 20, 30, 0.6);
-            border: 2px solid #00f2ff; border-radius: 15px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px); box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
-            animation: float 3s ease-in-out infinite;
-        }
+        /* 정보 리스트 스타일 */
+        .card-body { padding: 20px; background: #fff; }
+        .info-row { display: flex; margin-bottom: 12px; font-size: 0.95em; }
+        .info-row:last-child { margin-bottom: 0; }
+        .label { width: 85px; color: #777; flex-shrink: 0; }
+        .value { color: #222; font-weight: 500; }
 
-        .hud-card.risk { border-color: var(--risk-color); box-shadow: 0 0 20px var(--risk-shadow); }
+        /* 하단 상태 바 */
+        .status-footer { padding: 12px; text-align: center; color: white; font-weight: bold; letter-spacing: 1px; }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .card-label { font-size: 0.8em; color: rgba(255,255,255,0.7); margin-bottom: 10px; }
-        .card-value { font-size: 1.6em; font-weight: 900; text-align: center; }
-
-        /* 등급별 색상 정의 */
-        :root { --risk-color: #00f2ff; --risk-shadow: rgba(0, 242, 255, 0.3); }
-        .status-ok { color: #00ff88; text-shadow: 0 0 10px #00ff88; }
-        .status-warn { color: #ff3c00; text-shadow: 0 0 10px #ff3c00; }
+        /* 등급별 색상 세팅 */
+        .bg-h { background-color: #e74c3c; } /* 빨강 */
+        .bg-m { background-color: #f39c12; } /* 노랑 */
+        .bg-l { background-color: #3498db; } /* 파랑 */
+        .bg-n { background-color: #27ae60; } /* 초록 */
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="camera-container"><video id="webcam" autoplay playsinline></video></div>
 
-    <div class="hud-wrapper" id="hud" style="display: none;">
-        <div class="device-title" id="asset-name">SCANNING...</div>
-        
-        <div class="cards-container">
-            <div class="hud-card">
-                <div class="card-label">INSPECTION</div>
-                <div id="status-val" class="card-value">WAIT</div>
-            </div>
-
-            <div id="risk-card" class="hud-card risk">
-                <div class="card-label">RISK LEVEL</div>
-                <div id="risk-val" class="card-value">-</div>
-            </div>
+    <div id="ar-view" class="ar-card" style="display: none;">
+        <div class="card-header">
+            <div id="asset-name" class="asset-name">장비명 로딩중...</div>
+            <div id="risk-sticker" class="risk-sticker">N</div>
         </div>
+        
+        <div class="card-body">
+            <div class="info-row"><span class="label">사용부서</span><span id="asset-dept" class="value">-</span></div>
+            <div class="info-row"><span class="label">점검일</span><span id="asset-date" class="value">-</span></div>
+            <div class="info-row"><span class="label">점검자</span><span id="asset-user" class="value">-</span></div>
+        </div>
+
+        <div id="status-footer" class="status-footer">DATA VERIFIED</div>
     </div>
 
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv';
 
-        async function startCamera() {
+        async function startApp() {
+            // 카메라 연결
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
             document.getElementById('webcam').srcObject = stream;
-        }
 
-        async function loadData() {
+            // 데이터 로드
             const params = new URLSearchParams(window.location.search);
             const assetID = params.get('asset');
             if (!assetID) return;
@@ -85,44 +85,35 @@
             const res = await fetch(CSV_URL);
             const text = await res.text();
             const rows = text.split('\n').map(r => r.split(',').map(c => c.trim()));
-            const header = rows[0];
+            const headers = rows[0];
             const data = rows.find(r => r[0] === assetID);
 
             if (data) {
-                document.getElementById('hud').style.display = 'flex';
-                document.getElementById('asset-name').innerText = data[3]; // 품명
+                document.getElementById('ar-view').style.display = 'block';
                 
-                // 점검 상태 로직 (점검일 기준)
-                const statusVal = document.getElementById('status-val');
-                if (data[6] !== '-') {
-                    statusVal.innerText = "DONE";
-                    statusVal.className = "card-value status-ok";
-                } else {
-                    statusVal.innerText = "MISS";
-                    statusVal.className = "card-value status-warn";
-                }
+                // 데이터 매핑 (인덱스 번호는 엑셀 열 순서에 따라 수정 필요)
+                document.getElementById('asset-name').innerText = data[3] || '알 수 없는 장비'; // 품명
+                document.getElementById('asset-dept').innerText = data[1] || '-'; // 사용부서
+                document.getElementById('asset-date').innerText = data[6] || '-'; // 점검일
+                document.getElementById('asset-user').innerText = data[7] || '-'; // 점검자
 
-                // 위험 등급 로직 (H, M, L, N) - 엑셀의 '위험등급' 열 번호를 확인하세요.
-                // 아래 [4]는 예시입니다. 엑셀에서 위험등급이 몇번째 칸인지 세어보고 숫자를 바꾸세요.
-                const risk = data[4]; 
-                const riskVal = document.getElementById('risk-val');
-                const riskCard = document.getElementById('risk-card');
+                // 위험 등급 스티커 처리 (data[4] 가 위험등급 열이라고 가정)
+                const risk = (data[4] || 'N').toUpperCase();
+                const sticker = document.getElementById('risk-sticker');
+                sticker.innerText = risk;
                 
-                let color = "#00ff88"; // 기본 N (초록)
-                if (risk === 'H') color = "#ff0044"; // 빨강
-                else if (risk === 'M') color = "#ffcc00"; // 노랑
-                else if (risk === 'L') color = "#00ccff"; // 파랑
-
-                riskVal.innerText = risk;
-                riskVal.style.color = color;
-                riskVal.style.textShadow = `0 0 10px ${color}`;
-                riskCard.style.setProperty('--risk-color', color);
-                riskCard.style.setProperty('--risk-shadow', color + '44');
+                // 색상 클래스 초기화 및 적용
+                sticker.className = 'risk-sticker';
+                const footer = document.getElementById('status-footer');
+                
+                if (risk === 'H') { sticker.classList.add('bg-h'); footer.style.backgroundColor = '#e74c3c'; }
+                else if (risk === 'M') { sticker.classList.add('bg-m'); footer.style.backgroundColor = '#f39c12'; }
+                else if (risk === 'L') { sticker.classList.add('bg-l'); footer.style.backgroundColor = '#3498db'; }
+                else { sticker.classList.add('bg-n'); footer.style.backgroundColor = '#27ae60'; }
             }
         }
 
-        startCamera();
-        loadData();
+        startApp();
     </script>
 </body>
 </html>
