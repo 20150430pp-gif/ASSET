@@ -20,10 +20,8 @@
 
         @keyframes slideUp { from { opacity: 0; transform: translate(-50%, -40%); } to { opacity: 1; transform: translate(-50%, -50%); } }
 
-        /* 상단 등급 스티커 공간 */
         .card-header { position: relative; padding: 20px; border-bottom: 1px dashed #eee; }
         
-        /* 우측 상단 위험등급 스티커 */
         .risk-sticker {
             position: absolute; top: 15px; right: 15px;
             width: 45px; height: 45px; border-radius: 8px;
@@ -34,17 +32,14 @@
 
         .asset-name { font-size: 1.3em; font-weight: bold; color: #1a1a1a; margin-right: 50px; line-height: 1.2; }
 
-        /* 정보 리스트 스타일 */
         .card-body { padding: 20px; background: #fff; }
         .info-row { display: flex; margin-bottom: 12px; font-size: 0.95em; }
         .info-row:last-child { margin-bottom: 0; }
         .label { width: 85px; color: #777; flex-shrink: 0; }
         .value { color: #222; font-weight: 500; }
 
-        /* 하단 상태 바 */
         .status-footer { padding: 12px; text-align: center; color: white; font-weight: bold; letter-spacing: 1px; }
 
-        /* 등급별 색상 세팅 */
         .bg-h { background-color: #e74c3c; } /* 빨강 */
         .bg-m { background-color: #f39c12; } /* 노랑 */
         .bg-l { background-color: #3498db; } /* 파랑 */
@@ -56,11 +51,12 @@
 
     <div id="ar-view" class="ar-card" style="display: none;">
         <div class="card-header">
-            <div id="asset-name" class="asset-name">장비명 로딩중...</div>
+            <div id="asset-name" class="asset-name">데이터를 찾는 중...</div>
             <div id="risk-sticker" class="risk-sticker">N</div>
         </div>
         
         <div class="card-body">
+            <div class="info-row"><span class="label">자산번호</span><span id="asset-id-val" class="value">-</span></div>
             <div class="info-row"><span class="label">사용부서</span><span id="asset-dept" class="value">-</span></div>
             <div class="info-row"><span class="label">점검일</span><span id="asset-date" class="value">-</span></div>
             <div class="info-row"><span class="label">점검자</span><span id="asset-user" class="value">-</span></div>
@@ -70,46 +66,54 @@
     </div>
 
     <script>
+        // 선생님의 구글 시트 CSV 주소 (그대로 유지)
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv';
 
         async function startApp() {
-            // 카메라 연결
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById('webcam').srcObject = stream;
+            try {
+                // 1. 카메라 연결
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                document.getElementById('webcam').srcObject = stream;
 
-            // 데이터 로드
-            const params = new URLSearchParams(window.location.search);
-            const assetID = params.get('asset');
-            if (!assetID) return;
+                // 2. URL에서 연번(id) 가져오기
+                const params = new URLSearchParams(window.location.search);
+                const targetID = params.get('id') || params.get('asset'); // 둘 다 대응 가능하게 수정
+                if (!targetID) return;
 
-            const res = await fetch(CSV_URL);
-            const text = await res.text();
-            const rows = text.split('\n').map(r => r.split(',').map(c => c.trim()));
-            const headers = rows[0];
-            const data = rows.find(r => r[0] === assetID);
-
-            if (data) {
-                document.getElementById('ar-view').style.display = 'block';
+                // 3. 구글 시트 데이터 가져오기
+                const res = await fetch(CSV_URL);
+                const text = await res.text();
+                const rows = text.split('\n').map(r => r.split(',').map(c => c.trim()));
                 
-                // 데이터 매핑 (인덱스 번호는 엑셀 열 순서에 따라 수정 필요)
-                document.getElementById('asset-name').innerText = data[3] || '알 수 없는 장비'; // 품명
-                document.getElementById('asset-dept').innerText = data[1] || '-'; // 사용부서
-                document.getElementById('asset-date').innerText = data[6] || '-'; // 점검일
-                document.getElementById('asset-user').innerText = data[7] || '-'; // 점검자
+                // 4. A열(index 0)에서 연번이 일치하는 행 찾기
+                const data = rows.find(r => r[0] === targetID);
 
-                // 위험 등급 스티커 처리 (data[4] 가 위험등급 열이라고 가정)
-                const risk = (data[4] || 'N').toUpperCase();
-                const sticker = document.getElementById('risk-sticker');
-                sticker.innerText = risk;
-                
-                // 색상 클래스 초기화 및 적용
-                sticker.className = 'risk-sticker';
-                const footer = document.getElementById('status-footer');
-                
-                if (risk === 'H') { sticker.classList.add('bg-h'); footer.style.backgroundColor = '#e74c3c'; }
-                else if (risk === 'M') { sticker.classList.add('bg-m'); footer.style.backgroundColor = '#f39c12'; }
-                else if (risk === 'L') { sticker.classList.add('bg-l'); footer.style.backgroundColor = '#3498db'; }
-                else { sticker.classList.add('bg-n'); footer.style.backgroundColor = '#27ae60'; }
+                if (data) {
+                    document.getElementById('ar-view').style.display = 'block';
+                    
+                    // 데이터 매핑 (이미지 시트 기준 인덱스)
+                    document.getElementById('asset-name').innerText = data[4] || '정보 없음'; // E열: 품명
+                    document.getElementById('asset-id-val').innerText = data[1] || '-';      // B열: 자산번호
+                    document.getElementById('asset-dept').innerText = data[2] || '-';      // C열: 사용부서
+                    document.getElementById('asset-date').innerText = data[7] || '-';      // H열: 점검일
+                    document.getElementById('asset-user').innerText = data[8] || '-';      // I열: 점검자
+
+                    // 위험 등급 스티커 (F열: 예방점검그룹)
+                    const risk = (data[5] || 'N').toUpperCase();
+                    const sticker = document.getElementById('risk-sticker');
+                    sticker.innerText = risk;
+                    
+                    // 등급별 색상 적용
+                    sticker.className = 'risk-sticker';
+                    const footer = document.getElementById('status-footer');
+                    
+                    if (risk === 'H') { sticker.classList.add('bg-h'); footer.style.backgroundColor = '#e74c3c'; }
+                    else if (risk === 'M') { sticker.classList.add('bg-m'); footer.style.backgroundColor = '#f39c12'; }
+                    else if (risk === 'L') { sticker.classList.add('bg-l'); footer.style.backgroundColor = '#3498db'; }
+                    else { sticker.classList.add('bg-n'); footer.style.backgroundColor = '#27ae60'; }
+                }
+            } catch (err) {
+                console.error("에러 발생:", err);
             }
         }
 
