@@ -3,47 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Equipment Management System</title>
+    <title>Ewha Medical Engineering - Asset AR</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        /* 기본 레이아웃 */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000; }
         #camera-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         video { width: 100%; height: 100%; object-fit: cover; }
 
-        /* AR 메인 카드 디자인 */
+        /* AR 정보 카드 디자인 */
         .ar-card {
-            position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 10; width: 85%; max-width: 380px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-            overflow: hidden; animation: slideUp 0.5s ease-out;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 10; width: 88%; max-width: 400px;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+            overflow: hidden; animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, -40%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, -30%); } to { opacity: 1; transform: translate(-50%, -50%); } }
 
-        .card-header { position: relative; padding: 20px; border-bottom: 1px dashed #eee; }
-        
+        /* 상단 헤더: 장비명 및 위험등급 */
+        .card-header { position: relative; padding: 25px 20px; background: #f8f9fa; border-bottom: 1px solid #eee; }
+        .asset-name { font-size: 1.4em; font-weight: 800; color: #111; margin-right: 55px; word-break: keep-all; }
         .risk-sticker {
-            position: absolute; top: 15px; right: 15px;
-            width: 45px; height: 45px; border-radius: 8px;
+            position: absolute; top: 20px; right: 20px;
+            width: 50px; height: 50px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: 900; font-size: 1.2em;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            color: white; font-weight: 900; font-size: 1.4em;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        .asset-name { font-size: 1.3em; font-weight: bold; color: #1a1a1a; margin-right: 50px; line-height: 1.2; }
+        /* 상세 정보 섹션 */
+        .card-body { padding: 20px; }
+        .info-group { margin-bottom: 15px; border-bottom: 1px solid #f1f1f1; padding-bottom: 10px; }
+        .info-group:last-child { border-bottom: none; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95em; }
+        .label { color: #888; font-weight: 500; }
+        .value { color: #222; font-weight: 600; text-align: right; }
 
-        .card-body { padding: 20px; background: #fff; }
-        .info-row { display: flex; margin-bottom: 12px; font-size: 0.95em; }
-        .info-row:last-child { margin-bottom: 0; }
-        .label { width: 85px; color: #777; flex-shrink: 0; }
-        .value { color: #222; font-weight: 500; }
+        /* 하단 상태바 */
+        .status-footer { padding: 12px; text-align: center; color: white; font-size: 0.85em; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; }
 
-        .status-footer { padding: 12px; text-align: center; color: white; font-weight: bold; letter-spacing: 1px; }
-
-        .bg-h { background-color: #e74c3c; } /* 빨강 */
-        .bg-m { background-color: #f39c12; } /* 노랑 */
-        .bg-l { background-color: #3498db; } /* 파랑 */
-        .bg-n { background-color: #27ae60; } /* 초록 */
+        /* 위험 등급별 색상 */
+        .bg-h { background: linear-gradient(135deg, #ff416c, #ff4b2b); } /* 고위험(H) */
+        .bg-m { background: linear-gradient(135deg, #f7971e, #ffd200); } /* 중위험(M) */
+        .bg-l { background: linear-gradient(135deg, #00b4db, #0083b0); } /* 저위험(L) */
+        .bg-n { background: linear-gradient(135deg, #56ab2f, #a8e063); } /* 일반(N) */
     </style>
 </head>
 <body>
@@ -51,69 +55,97 @@
 
     <div id="ar-view" class="ar-card" style="display: none;">
         <div class="card-header">
-            <div id="asset-name" class="asset-name">데이터를 찾는 중...</div>
-            <div id="risk-sticker" class="risk-sticker">N</div>
+            <div id="asset-name" class="asset-name">장비 정보 로딩 중...</div>
+            <div id="risk-sticker" class="risk-sticker">-</div>
         </div>
         
         <div class="card-body">
-            <div class="info-row"><span class="label">자산번호</span><span id="asset-id-val" class="value">-</span></div>
-            <div class="info-row"><span class="label">사용부서</span><span id="asset-dept" class="value">-</span></div>
-            <div class="info-row"><span class="label">점검일</span><span id="asset-date" class="value">-</span></div>
-            <div class="info-row"><span class="label">점검자</span><span id="asset-user" class="value">-</span></div>
+            <div class="info-group">
+                <div class="info-row"><span class="label">시스템 ID</span><span id="asset-id-no" class="value">-</span></div>
+                <div class="info-row"><span class="label">자산번호</span><span id="asset-id-val" class="value">-</span></div>
+                <div class="info-row"><span class="label">시리얼번호</span><span id="asset-sn" class="value">-</span></div>
+            </div>
+            <div class="info-group">
+                <div class="info-row"><span class="label">사용부서</span><span id="asset-dept" class="value">-</span></div>
+                <div class="info-row"><span class="label">모델명</span><span id="asset-model" class="value">-</span></div>
+            </div>
+            <div class="info-group">
+                <div class="info-row"><span class="label">최근 점검일</span><span id="asset-date" class="value">-</span></div>
+                <div class="info-row"><span class="label">담당자</span><span id="asset-user" class="value">-</span></div>
+                <div class="info-row"><span class="label">상태</span><span id="asset-status" class="value" style="color:#27ae60;">-</span></div>
+            </div>
         </div>
 
-        <div id="status-footer" class="status-footer">DATA VERIFIED</div>
+        <div id="status-footer" class="status-footer">SYSTEM VERIFIED</div>
     </div>
 
     <script>
-        // 선생님의 구글 시트 CSV 주소 (그대로 유지)
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv';
 
         async function startApp() {
             try {
-                // 1. 카메라 연결
+                // 1. 카메라 연동
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 document.getElementById('webcam').srcObject = stream;
 
-                // 2. URL에서 연번(id) 가져오기
+                // 2. URL 파라미터에서 ID 추출 (예: ?id=1)
                 const params = new URLSearchParams(window.location.search);
-                const targetID = params.get('id') || params.get('asset'); // 둘 다 대응 가능하게 수정
-                if (!targetID) return;
+                const targetID = params.get('id');
+                if (!targetID) {
+                    alert("QR 코드의 ID 정보가 없습니다.");
+                    return;
+                }
 
-                // 3. 구글 시트 데이터 가져오기
+                // 3. 구글 시트 데이터 로드
                 const res = await fetch(CSV_URL);
                 const text = await res.text();
+                // 엑셀 데이터를 배열로 변환
                 const rows = text.split('\n').map(r => r.split(',').map(c => c.trim()));
                 
-                // 4. A열(index 0)에서 연번이 일치하는 행 찾기
-                const data = rows.find(r => r[0] === targetID);
+                // 4. A열(index 0)에서 연번 매칭
+                const data = rows.find(r => String(r[0]) === String(targetID));
 
                 if (data) {
                     document.getElementById('ar-view').style.display = 'block';
                     
-                    // 데이터 매핑 (이미지 시트 기준 인덱스)
-                    document.getElementById('asset-name').innerText = data[4] || '정보 없음'; // E열: 품명
-                    document.getElementById('asset-id-val').innerText = data[1] || '-';      // B열: 자산번호
-                    document.getElementById('asset-dept').innerText = data[2] || '-';      // C열: 사용부서
-                    document.getElementById('asset-date').innerText = data[7] || '-';      // H열: 점검일
-                    document.getElementById('asset-user').innerText = data[8] || '-';      // I열: 점검자
+                    // 데이터 매칭 (A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9)
+                    document.getElementById('asset-name').innerText   = data[4] || '정보 없음'; // E: 품명
+                    document.getElementById('asset-id-no').innerText  = data[0] || '-';       // A: 연번
+                    document.getElementById('asset-id-val').innerText = data[1] || '-';      // B: 자산번호
+                    document.getElementById('asset-sn').innerText      = data[3] || '-';      // D: 시리얼번호
+                    document.getElementById('asset-dept').innerText    = data[2] || '-';      // C: 사용부서
+                    document.getElementById('asset-model').innerText   = data[6] || '-';      // G: 모델명
+                    document.getElementById('asset-date').innerText    = data[7] || '-';      // H: 점검일
+                    document.getElementById('asset-user').innerText    = data[8] || '-';      // I: 점검자
+                    document.getElementById('asset-status').innerText  = data[9] || '-';      // J: 점검완료여부
 
-                    // 위험 등급 스티커 (F열: 예방점검그룹)
+                    // 위험 등급 설정 (F: 예방점검그룹)
                     const risk = (data[5] || 'N').toUpperCase();
                     const sticker = document.getElementById('risk-sticker');
-                    sticker.innerText = risk;
-                    
-                    // 등급별 색상 적용
-                    sticker.className = 'risk-sticker';
                     const footer = document.getElementById('status-footer');
                     
-                    if (risk === 'H') { sticker.classList.add('bg-h'); footer.style.backgroundColor = '#e74c3c'; }
-                    else if (risk === 'M') { sticker.classList.add('bg-m'); footer.style.backgroundColor = '#f39c12'; }
-                    else if (risk === 'L') { sticker.classList.add('bg-l'); footer.style.backgroundColor = '#3498db'; }
-                    else { sticker.classList.add('bg-n'); footer.style.backgroundColor = '#27ae60'; }
+                    sticker.innerText = risk;
+                    sticker.className = 'risk-sticker'; // 초기화
+                    
+                    if (risk === 'H') { 
+                        sticker.classList.add('bg-h'); 
+                        footer.classList.add('bg-h');
+                    } else if (risk === 'M') { 
+                        sticker.classList.add('bg-m'); 
+                        footer.classList.add('bg-m');
+                    } else if (risk === 'L') { 
+                        sticker.classList.add('bg-l'); 
+                        footer.classList.add('bg-l');
+                    } else { 
+                        sticker.classList.add('bg-n'); 
+                        footer.classList.add('bg-n');
+                    }
+                } else {
+                    console.log("해당 ID의 장비를 찾을 수 없습니다.");
                 }
             } catch (err) {
-                console.error("에러 발생:", err);
+                console.error("장치 연결 실패:", err);
+                alert("카메라 권한이 필요합니다.");
             }
         }
 
