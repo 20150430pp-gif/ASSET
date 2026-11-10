@@ -3,167 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ewha Medical Engineering - Professional Asset AR</title>
+    <title>이대서울병원 장비점검</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Pretendard', -apple-system, sans-serif; background: #000; }
-        #camera-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif; background: #000; }
+        #camera-container { position: fixed; inset: 0; z-index: 1; }
         video { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.8); }
 
-        /* 반투명 유리 카드 디자인 */
-        .ar-card {
+        /* ===== 스티커 카드 ===== */
+        .sticker {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 10; width: 88%; max-width: 420px;
-            background: rgba(20, 20, 20, 0.65);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-            color: #fff;
-            overflow: hidden;
+            z-index: 10; width: 92%; max-width: 480px;
+            background: #fff;                 /* 스티커 바깥 흰 여백 */
+            padding: 7px;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
             animation: fadeIn 0.4s ease-out;
         }
-
         @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -45%); } to { opacity: 1; transform: translate(-50%, -50%); } }
 
-        /* 헤더 섹션 */
-        .card-header { padding: 30px 25px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-        .asset-name { font-size: 1.6em; font-weight: 700; letter-spacing: -0.8px; line-height: 1.2; margin-right: 65px; word-break: keep-all; }
-        
-        /* 우측 상단 뱃지 */
-        .risk-sticker {
-            position: absolute; top: 25px; right: 25px;
-            width: 55px; height: 55px; border-radius: 14px;
+        .sticker-inner {
+            display: flex;
+            border: 2px solid #111;           /* 검정 테두리 */
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        /* 왼쪽 초록 영역 */
+        .left { flex: 1; background: #2e8b2e; padding: 6px 6px 8px; display: flex; flex-direction: column; min-width: 0; }
+        .title {
+            color: #fff; font-weight: 800; text-align: center;
+            font-size: clamp(17px, 5.4vw, 24px); letter-spacing: -0.5px;
+            padding: 8px 4px 10px; white-space: nowrap;
+        }
+        .row {
+            background: #fff; color: #111;
+            display: flex; align-items: center;
+            padding: 6px 8px; margin-top: 4px;
+            font-size: clamp(14px, 4.2vw, 18px); font-weight: 700;
+            white-space: nowrap;
+        }
+        .row .lbl { width: 3.6em; text-align: justify; text-align-last: justify; flex-shrink: 0; }
+        .row .colon { margin: 0 4px 0 2px; }
+        .row .val { overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+
+        /* 오른쪽 흰 칸 (위험등급) */
+        .right {
+            width: 30%; background: #fff;
+            border-left: 2px solid #111;
             display: flex; align-items: center; justify-content: center;
-            font-weight: 900; font-size: 1.4em;
-            transition: all 0.3s ease;
+            padding: 8px;
         }
-        /* '없음'일 때 글자 크기 조정 */
-        .risk-sticker.text-small { font-size: 0.9em; font-weight: 700; letter-spacing: -0.5px; }
-
-        /* 정보 그리드 */
-        .card-body { padding: 25px; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-        .info-item { display: flex; flex-direction: column; gap: 6px; }
-        .label { font-size: 0.75em; color: rgba(255, 255, 255, 0.5); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .value { font-size: 1.05em; font-weight: 600; color: #eee; }
-
-        /* 하단 상세 정보 */
-        .full-info { margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
-
-        /* 상태 푸터 */
-        .status-footer { 
-            padding: 15px; text-align: center; 
-            background: rgba(0, 0, 0, 0.3); 
-            font-size: 0.75em; font-weight: 800; letter-spacing: 3px;
-            color: rgba(255, 255, 255, 0.4);
+        .risk-badge {
+            width: 100%; aspect-ratio: 1 / 1; max-width: 110px;
+            border-radius: 14px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #fff;
         }
+        .risk-badge .en { font-size: clamp(30px, 10vw, 44px); font-weight: 900; line-height: 1; }
+        .risk-badge .ko { font-size: clamp(12px, 3.6vw, 15px); font-weight: 700; margin-top: 4px; }
 
-        /* 등급별 색상 및 글로우 효과 */
-        .bg-h { background: #e74c3c; box-shadow: 0 0 20px rgba(231, 76, 60, 0.4); color: #fff; } /* 고위험(H) - 빨강 */
-        .bg-m { background: #f39c12; box-shadow: 0 0 20px rgba(243, 156, 18, 0.4); color: #fff; } /* 중위험(M) - 주황 */
-        .bg-l { background: #3498db; box-shadow: 0 0 20px rgba(52, 152, 219, 0.4); color: #fff; } /* 저위험(L) - 파랑 */
-        .bg-n { background: #2ecc71; box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); color: #fff; } /* 일반(N) - 초록 */
-        /* 미해당 - 검정바탕에 선으로 표현 */
-        .bg-none { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.5); } 
+        /* 등급별 색상 (기존 유지) */
+        .bg-h { background: #e74c3c; box-shadow: 0 0 14px rgba(231, 76, 60, 0.45); }
+        .bg-m { background: #f39c12; box-shadow: 0 0 14px rgba(243, 156, 18, 0.45); }
+        .bg-l { background: #3498db; box-shadow: 0 0 14px rgba(52, 152, 219, 0.45); }
+        .bg-n { background: #2ecc71; box-shadow: 0 0 14px rgba(46, 204, 113, 0.45); }
+        .bg-none { background: transparent; border: 2px dashed #bbb; color: #aaa; }
     </style>
 </head>
 <body>
     <div id="camera-container"><video id="webcam" autoplay playsinline></video></div>
 
-    <div id="ar-view" class="ar-card" style="display: none;">
-        <div class="card-header">
-            <div id="asset-name" class="asset-name">장비 정보 로딩 중...</div>
-            <div id="risk-sticker" class="risk-sticker">-</div>
-        </div>
-        
-        <div class="card-body">
-            <div class="info-grid">
-                <div class="info-item"><span class="label">자산번호</span><span id="asset-id-val" class="value">-</span></div>
-                <div class="info-item"><span class="label">사용부서</span><span id="asset-dept" class="value">-</span></div>
-                <div class="info-item"><span class="label">점검일</span><span id="asset-date" class="value">-</span></div>
-                <div class="info-item"><span class="label">점검자</span><span id="asset-user" class="value">-</span></div>
+    <div id="ar-view" class="sticker" style="display: none;">
+        <div class="sticker-inner">
+            <div class="left">
+                <div class="title">이대서울병원 장비점검</div>
+                <div class="row"><span class="lbl">점검자</span><span class="colon">:</span><span id="v-user" class="val"></span></div>
+                <div class="row"><span class="lbl">점검일</span><span class="colon">:</span><span id="v-date" class="val"></span></div>
             </div>
-
-            <div class="full-info">
-                <div class="info-item">
-                    <span class="label">모델명</span>
-                    <span id="asset-model" class="value">-</span>
-                </div>
-            </div>
-
-            <div class="full-info" style="border-top: none;">
-                <div class="info-item">
-                    <span class="label">점검완료여부</span>
-                    <span id="asset-status" class="value" style="color: #4ade80;">-</span>
+            <div class="right">
+                <div id="risk-badge" class="risk-badge bg-none">
+                    <span id="risk-en" class="en">-</span>
+                    <span id="risk-ko" class="ko"></span>
                 </div>
             </div>
         </div>
-
-        <div id="status-footer" class="status-footer">EWHA MEDICAL ENGINEERING</div>
     </div>
 
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv';
 
+        const BLANK_DATE = '20\u2003\u2003.\u2003\u2003.';   // 스티커처럼 빈칸 표시
+
+        const RISK = {
+            'H': { en: 'H', ko: '높음', cls: 'bg-h' },
+            'M': { en: 'M', ko: '중간', cls: 'bg-m' },
+            'L': { en: 'L', ko: '낮음', cls: 'bg-l' },
+            'N': { en: 'N', ko: '없음', cls: 'bg-n' }
+        };
+
+        // 따옴표 안의 쉼표까지 처리하는 CSV 파서
+        function parseCSV(text) {
+            const rows = []; let row = []; let cell = ''; let q = false;
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                if (q) {
+                    if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+                    else if (c === '"') q = false;
+                    else cell += c;
+                } else if (c === '"') q = true;
+                else if (c === ',') { row.push(cell.trim()); cell = ''; }
+                else if (c === '\n') { row.push(cell.trim()); rows.push(row); row = []; cell = ''; }
+                else if (c !== '\r') cell += c;
+            }
+            row.push(cell.trim()); rows.push(row);
+            return rows;
+        }
+
+        // "2026-11-10", "2026.11.10", "2026. 11. 10" 등 → Date
+        function toDate(s) {
+            const m = String(s || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+            return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+        }
+        function fmt(d) {
+            if (!d) return BLANK_DATE;
+            const p = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}. ${p(d.getMonth() + 1)}. ${p(d.getDate())}.`;
+        }
+
         async function startApp() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 document.getElementById('webcam').srcObject = stream;
+            } catch (err) { console.error('카메라 오류', err); }
 
-                const params = new URLSearchParams(window.location.search);
-                const targetID = params.get('id');
+            try {
+                const targetID = new URLSearchParams(window.location.search).get('id');
                 if (!targetID) return;
 
                 const res = await fetch(CSV_URL);
-                const text = await res.text();
-                const rows = text.split('\n').map(r => r.split(',').map(c => c.trim()));
-                
+                const rows = parseCSV(await res.text());
                 const data = rows.find(r => String(r[0]) === String(targetID));
+                if (!data) return;
 
-                if (data) {
-                    document.getElementById('ar-view').style.display = 'block';
-                    
-                    document.getElementById('asset-name').innerText   = data[4] || '정보 없음'; 
-                    document.getElementById('asset-id-val').innerText = data[1] || '-';      
-                    document.getElementById('asset-dept').innerText    = data[2] || '-';      
-                    document.getElementById('asset-model').innerText   = data[6] || '-';      
-                    document.getElementById('asset-date').innerText    = data[7] || '-';      
-                    document.getElementById('asset-user').innerText    = data[8] || '-';      
-                    document.getElementById('asset-status').innerText  = data[9] || '-';      
+                document.getElementById('ar-view').style.display = 'block';
 
-                    // 시트의 등급 데이터 가져오기 (F열 기준)
-                    const riskRaw = (data[5] || '').trim().toUpperCase();
-                    const sticker = document.getElementById('risk-sticker');
-                    
-                    // 초기화
-                    sticker.className = 'risk-sticker';
-                    
-                    // [핵심 로직] 등급별 표시 조건 분기
-                    if (riskRaw === 'H') {
-                        sticker.innerText = 'H';
-                        sticker.classList.add('bg-h');
-                    } else if (riskRaw === 'M') {
-                        sticker.innerText = 'M';
-                        sticker.classList.add('bg-m');
-                    } else if (riskRaw === 'L') {
-                        sticker.innerText = 'L';
-                        sticker.classList.add('bg-l');
-                    } else if (riskRaw === 'N') {
-                        // N 등급: 초록색 뱃지에 "없음" 표시
-                        sticker.innerText = '없음';
-                        sticker.classList.add('bg-n');
-                        sticker.classList.add('text-small'); // 글자 크기 조정용 클래스 추가
-                    } else if (riskRaw === '해당없음') {
-                        // '해당없음' 등급: 검정바탕에 선으로 된 뱃지에 "-" 표시
-                        sticker.innerText = '-';
-                        sticker.classList.add('bg-none');
-                    } else {
-                        // 그 외 정보가 없거나 잘못된 경우 미해당과 동일하게 처리
-                        sticker.innerText = '-';
-                        sticker.classList.add('bg-none');
-                    }
-                }
+                // 점검자 (I열), 비어 있으면 '의공팀'
+                document.getElementById('v-user').innerText = data[8] || '의공팀';
+
+                // 점검일 (H열)
+                const inspDate = toDate(data[7]);
+                document.getElementById('v-date').innerText = fmt(inspDate);
+
+                // 위험등급 (F열)
+                const r = RISK[(data[5] || '').trim().toUpperCase()];
+                const badge = document.getElementById('risk-badge');
+                badge.className = 'risk-badge ' + (r ? r.cls : 'bg-none');
+                document.getElementById('risk-en').innerText = r ? r.en : '-';
+                document.getElementById('risk-ko').innerText = r ? r.ko : '';
             } catch (err) { console.error(err); }
         }
         startApp();
