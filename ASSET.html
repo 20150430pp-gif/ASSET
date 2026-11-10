@@ -46,12 +46,18 @@
         .row .colon { margin: 0 4px 0 2px; }
         .row .val { overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 
-        /* L·N 등급: 라벨 '최근수리일'용 폭 확장 */
-        .sticker.repair .row .lbl { width: 5em; }
-        /* '당해 수리 발생 없음' 문구용 (작은 글씨, 줄바꿈 허용) */
+        /* L·N 등급: 초록 영역 칸 조정 */
+        .sticker.repair .row { padding: 6px 6px; }
+        .sticker.repair .row .lbl {
+            width: 4.8em; font-size: 0.92em; letter-spacing: -1px;
+        }
+        .sticker.repair .row .colon { margin: 0 3px 0 2px; }
+        .sticker.repair .row .val { letter-spacing: -0.3px; }
+        /* '당해 수리 발생 없음' 문구: 한 줄 유지 */
         .row .val.small {
-            font-size: clamp(11px, 3.4vw, 15px);
-            white-space: normal; line-height: 1.2;
+            font-size: clamp(11px, 3.3vw, 14px);
+            letter-spacing: -0.5px;
+            white-space: nowrap;
         }
 
         /* 오른쪽 흰 칸 (위험등급) */
