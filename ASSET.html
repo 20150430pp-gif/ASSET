@@ -3,110 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>이대서울병원 장비점검</title>
+    <title>이대서울병원 의료장비 점검</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif; background: #000; }
+        :root {
+            --brand: #00573f;          /* 이대서울병원 그린 */
+            --brand-dark: #003d2c;
+            --ink: #14201b;
+            --muted: #7b8a84;
+            --line: #e6ebe9;
+        }
+        * { box-sizing: border-box; }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            font-family: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
+            background: #000; -webkit-font-smoothing: antialiased;
+        }
         #camera-container { position: fixed; inset: 0; z-index: 1; }
-        video { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.8); }
+        video { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.75); }
 
-        /* ===== 스티커 카드 ===== */
-        .sticker {
+        /* ===== 카드 ===== */
+        .card {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 10; width: 92%; max-width: 480px;
-            background: #fff;                 /* 스티커 바깥 흰 여백 */
-            padding: 7px;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
-            animation: fadeIn 0.4s ease-out;
+            z-index: 10; width: 90%; max-width: 440px;
+            background: #fff; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+            animation: rise 0.45s cubic-bezier(.2, .8, .2, 1);
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -45%); } to { opacity: 1; transform: translate(-50%, -50%); } }
-
-        .sticker-inner {
-            display: flex;
-            border: 2px solid #111;           /* 검정 테두리 */
-            border-radius: 3px;
-            overflow: hidden;
+        @keyframes rise {
+            from { opacity: 0; transform: translate(-50%, -44%); }
+            to   { opacity: 1; transform: translate(-50%, -50%); }
         }
 
-        /* 왼쪽 초록 영역 */
-        .left { flex: 1; background: #2e8b2e; padding: 6px 6px 8px; display: flex; flex-direction: column; min-width: 0; }
-        .title {
-            color: #fff; font-weight: 800; text-align: center;
-            font-size: clamp(17px, 5.4vw, 24px); letter-spacing: -0.5px;
-            padding: 8px 4px 10px; white-space: nowrap;
+        /* 헤더: 병원명 */
+        .head {
+            background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+            color: #fff; padding: 18px 20px 16px;
+            display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
         }
-        .row {
-            background: #fff; color: #111;
-            display: flex; align-items: center;
-            padding: 6px 8px; margin-top: 4px;
-            font-size: clamp(14px, 4.2vw, 18px); font-weight: 700;
-            white-space: nowrap;
+        .head .en {
+            font-size: 9.5px; font-weight: 600; letter-spacing: 1.6px;
+            opacity: 0.7; text-transform: uppercase; margin-bottom: 4px;
         }
-        .row .lbl { width: 3.6em; text-align: justify; text-align-last: justify; flex-shrink: 0; }
-        .row .colon { margin: 0 4px 0 2px; }
-        .row .val { overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-
-        /* L·N 등급: 초록 영역 칸 조정 */
-        .sticker.repair .row { padding: 6px 6px; }
-        .sticker.repair .row .lbl {
-            width: 4.8em; font-size: 0.92em; letter-spacing: -1px;
-        }
-        .sticker.repair .row .colon { margin: 0 3px 0 2px; }
-        .sticker.repair .row .val { letter-spacing: -0.3px; }
-        /* '당해 수리 발생 없음' 문구: 한 줄 유지 */
-        .row .val.small {
-            font-size: clamp(11px, 3.3vw, 14px);
-            letter-spacing: -0.5px;
+        .head .ko { font-size: 21px; font-weight: 800; letter-spacing: -0.6px; line-height: 1.1; }
+        .head .tag {
+            font-size: 11px; font-weight: 600; letter-spacing: -0.2px;
+            padding: 5px 10px; border-radius: 999px;
+            background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.22);
             white-space: nowrap;
         }
 
-        /* 오른쪽 흰 칸 (위험등급) */
-        .right {
-            width: 34%; background: #fff;
-            border-left: 2px solid #111;
-            display: flex; align-items: center; justify-content: center;
-            padding: 6px;
+        /* 본문 */
+        .body { display: flex; }
+        .info { flex: 1; min-width: 0; padding: 6px 20px; }
+        .field { padding: 14px 0; }
+        .field + .field { border-top: 1px solid var(--line); }
+        .field .label {
+            font-size: 11.5px; font-weight: 600; color: var(--muted);
+            letter-spacing: 0.2px; margin-bottom: 6px;
         }
-        .risk-badge {
-            width: 100%; aspect-ratio: 1 / 1; max-width: 140px;
-            border-radius: 14px;
+        .field .value {
+            font-size: 19px; font-weight: 700; color: var(--ink);
+            letter-spacing: -0.4px; font-variant-numeric: tabular-nums;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .field .value.note { font-size: 16px; color: var(--brand); }
+
+        /* 위험등급 패널 */
+        .risk {
+            width: 36%; margin: 14px 14px 14px 0; border-radius: 14px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: #fff;
+            color: #fff; padding: 14px 8px; text-align: center;
         }
-        .risk-badge .en { font-size: clamp(44px, 15vw, 68px); font-weight: 900; line-height: 1; }
-        .risk-badge .ko { font-size: clamp(16px, 5vw, 22px); font-weight: 800; margin-top: 4px; }
+        .risk .cap {
+            font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+            opacity: 0.85; margin-bottom: 10px;
+        }
+        .risk .grade, .risk .grade-ko {
+            font-size: clamp(26px, 8.5vw, 34px);    /* 영문·한글 같은 크기 */
+            font-weight: 800; line-height: 1.15; letter-spacing: -0.5px;
+        }
 
-        /* 등급별 색상 (기존 유지) */
-        .bg-h { background: #e74c3c; box-shadow: 0 0 14px rgba(231, 76, 60, 0.45); }
-        .bg-m { background: #f39c12; box-shadow: 0 0 14px rgba(243, 156, 18, 0.45); }
-        .bg-l { background: #3498db; box-shadow: 0 0 14px rgba(52, 152, 219, 0.45); }
-        .bg-n { background: #2ecc71; box-shadow: 0 0 14px rgba(46, 204, 113, 0.45); }
-        .bg-none { background: transparent; border: 2px dashed #bbb; color: #aaa; }
+        .bg-h { background: linear-gradient(160deg, #ef5a4a, #c0392b); }
+        .bg-m { background: linear-gradient(160deg, #f7a531, #d9860a); }
+        .bg-l { background: linear-gradient(160deg, #4aa3e0, #2878b8); }
+        .bg-n { background: linear-gradient(160deg, #3ccf7e, #22a35d); }
+        .bg-none { background: #f3f5f4; color: #a3aeaa; border: 1px dashed #cfd6d3; }
+
+        /* 푸터 */
+        .foot {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 11px 20px; background: #f6f8f7; border-top: 1px solid var(--line);
+            font-size: 11px; color: var(--muted); font-weight: 500;
+        }
+        .foot .live { display: flex; align-items: center; gap: 6px; }
+        .foot .dot {
+            width: 7px; height: 7px; border-radius: 50%; background: #22a35d;
+            box-shadow: 0 0 0 3px rgba(34, 163, 93, 0.18);
+        }
     </style>
 </head>
 <body>
     <div id="camera-container"><video id="webcam" autoplay playsinline></video></div>
 
-    <div id="ar-view" class="sticker" style="display: none;">
-        <div class="sticker-inner">
-            <div class="left">
-                <div class="title">이대서울병원 장비점검</div>
-                <div class="row"><span class="lbl">점검자</span><span class="colon">:</span><span id="v-user" class="val"></span></div>
-                <div class="row"><span class="lbl" id="l-date">점검일</span><span class="colon">:</span><span id="v-date" class="val"></span></div>
+    <div id="ar-view" class="card" style="display: none;">
+        <div class="head">
+            <div>
+                <div class="en">Ewha Womans University Seoul Hospital</div>
+                <div class="ko">이대서울병원</div>
             </div>
-            <div class="right">
-                <div id="risk-badge" class="risk-badge bg-none">
-                    <span id="risk-en" class="en">-</span>
-                    <span id="risk-ko" class="ko"></span>
+            <div class="tag">의료장비 점검</div>
+        </div>
+
+        <div class="body">
+            <div class="info">
+                <div class="field">
+                    <div class="label">점검자</div>
+                    <div id="v-user" class="value"></div>
+                </div>
+                <div class="field">
+                    <div id="l-date" class="label">점검일</div>
+                    <div id="v-date" class="value"></div>
                 </div>
             </div>
+            <div id="risk" class="risk bg-none">
+                <div class="cap">위험등급</div>
+                <div id="risk-en" class="grade">-</div>
+                <div id="risk-ko" class="grade-ko"></div>
+            </div>
+        </div>
+
+        <div class="foot">
+            <span>의공팀 Medical Engineering</span>
+            <span class="live"><span class="dot"></span><span id="v-now"></span></span>
         </div>
     </div>
 
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv';
 
-        const BLANK_DATE = '20\u2003\u2003.\u2003\u2003.';   // 스티커처럼 빈칸 표시
+        const BLANK_DATE = '20\u2003\u2003.\u2003\u2003.';
         const NO_REPAIR = '당해 수리 발생 없음';
 
         const RISK = {
@@ -116,7 +152,6 @@
             'N': { en: 'N', ko: '없음', cls: 'bg-n' }
         };
 
-        // 따옴표 안의 쉼표까지 처리하는 CSV 파서
         function parseCSV(text) {
             const rows = []; let row = []; let cell = ''; let q = false;
             for (let i = 0; i < text.length; i++) {
@@ -134,14 +169,13 @@
             return rows;
         }
 
-        // "2026-11-10", "2026.11.10", "2026. 11. 10" 등 → Date
         function toDate(s) {
             const m = String(s || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
             return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
         }
+        const p = n => String(n).padStart(2, '0');
         function fmt(d) {
             if (!d) return BLANK_DATE;
-            const p = n => String(n).padStart(2, '0');
             return `${d.getFullYear()}. ${p(d.getMonth() + 1)}. ${p(d.getDate())}.`;
         }
 
@@ -160,36 +194,36 @@
                 const data = rows.find(r => String(r[0]) === String(targetID));
                 if (!data) return;
 
-                const view = document.getElementById('ar-view');
-                view.style.display = 'block';
+                document.getElementById('ar-view').style.display = 'block';
 
-                // 점검자 (I열), 비어 있으면 '의공팀'
+                // 조회 시각
+                const now = new Date();
+                document.getElementById('v-now').innerText =
+                    `실시간 조회 ${now.getFullYear()}.${p(now.getMonth() + 1)}.${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}`;
+
+                // 점검자 (I열)
                 document.getElementById('v-user').innerText = data[8] || '의공팀';
 
                 // 위험등급 (F열)
-                const riskKey = (data[5] || '').trim().toUpperCase();
-                const r = RISK[riskKey];
-                const isRepair = riskKey === 'L' || riskKey === 'N';
+                const key = (data[5] || '').trim().toUpperCase();
+                const r = RISK[key];
+                const isRepair = key === 'L' || key === 'N';
 
-                const badge = document.getElementById('risk-badge');
-                badge.className = 'risk-badge ' + (r ? r.cls : 'bg-none');
+                document.getElementById('risk').className = 'risk ' + (r ? r.cls : 'bg-none');
                 document.getElementById('risk-en').innerText = r ? r.en : '-';
                 document.getElementById('risk-ko').innerText = r ? r.ko : '';
 
                 // 날짜 (H열): H·M → 점검일 / L·N → 최근수리일
-                const lDate = document.getElementById('l-date');
-                const vDate = document.getElementById('v-date');
                 const d = toDate(data[7]);
-
-                view.classList.toggle('repair', isRepair);
-                lDate.innerText = isRepair ? '최근수리일' : '점검일';
+                const vDate = document.getElementById('v-date');
+                document.getElementById('l-date').innerText = isRepair ? '최근수리일' : '점검일';
 
                 if (isRepair && !d) {
                     vDate.innerText = NO_REPAIR;
-                    vDate.classList.add('small');
+                    vDate.classList.add('note');
                 } else {
                     vDate.innerText = fmt(d);
-                    vDate.classList.remove('small');
+                    vDate.classList.remove('note');
                 }
             } catch (err) { console.error(err); }
         }
