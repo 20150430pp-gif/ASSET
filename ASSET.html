@@ -45,16 +45,7 @@
             opacity: 0.72; margin-bottom: 5px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;   /* 항상 한 줄 */
         }
-        .head .row {
-            display: flex; align-items: center; justify-content: space-between; gap: 10px;
-        }
         .head .ko { font-size: 21px; font-weight: 800; letter-spacing: -0.6px; line-height: 1.1; white-space: nowrap; }
-        .head .tag {
-            font-size: 11px; font-weight: 600; letter-spacing: -0.2px;
-            padding: 5px 10px; border-radius: 999px;
-            background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.22);
-            white-space: nowrap;
-        }
 
         /* 본문 */
         .body { display: flex; }
@@ -112,10 +103,7 @@
     <div id="ar-view" class="card" style="display: none;">
         <div class="head">
             <div class="en">Ewha Womans University Seoul Hospital</div>
-            <div class="row">
-                <div class="ko">이대서울병원</div>
-                <div id="v-tag" class="tag">의료장비 점검</div>
-            </div>
+            <div class="ko">이대서울병원</div>
         </div>
 
         <div class="body">
@@ -146,7 +134,7 @@
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv';
 
         const BLANK_DATE = '20\u2003\u2003.\u2003\u2003.';
-        const NO_REPAIR = '당해 수리 발생 없음';
+        const NO_HISTORY = '당해 점검 이력 없음';
 
         const RISK = {
             'H': { en: 'H', ko: '높음', cls: 'bg-h' },
@@ -210,25 +198,19 @@
                 // 위험등급 (F열)
                 const key = (data[5] || '').trim().toUpperCase();
                 const r = RISK[key];
-                const isRegular = key === 'H' || key === 'M';
-                const isRepair = key === 'L' || key === 'N';
+                const isLowRisk = key === 'L' || key === 'N';
 
                 document.getElementById('risk').className = 'risk ' + (r ? r.cls : 'bg-none');
                 document.getElementById('risk-en').innerText = r ? r.en : '-';
                 document.getElementById('risk-ko').innerText = r ? r.ko : '';
 
-                // 상단 태그: H·M → 정기점검 / L·N → 상태기반점검 / 등급 없음 → 기본 문구
-                document.getElementById('v-tag').innerText =
-                    isRegular ? '의료장비 정기점검' :
-                    isRepair  ? '의료장비 상태기반점검' : '의료장비 점검';
-
-                // 날짜 (H열): H·M → 점검일 / L·N → 최근수리일
+                // 날짜 (H열): H·M → 점검일 / L·N → 최근점검일
                 const d = toDate(data[7]);
                 const vDate = document.getElementById('v-date');
-                document.getElementById('l-date').innerText = isRepair ? '최근수리일' : '점검일';
+                document.getElementById('l-date').innerText = isLowRisk ? '최근점검일' : '점검일';
 
-                if (isRepair && !d) {
-                    vDate.innerText = NO_REPAIR;
+                if (isLowRisk && !d) {
+                    vDate.innerText = NO_HISTORY;
                     vDate.classList.add('note');
                 } else {
                     vDate.innerText = fmt(d);
