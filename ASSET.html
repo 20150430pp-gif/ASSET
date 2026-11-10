@@ -46,8 +46,16 @@
         .row .colon { margin: 0 4px 0 2px; }
         .row .val { overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 
+        /* L·N 등급: 라벨 '최근수리일'용 폭 확장 */
+        .sticker.repair .row .lbl { width: 5em; }
+        /* '당해 수리 발생 없음' 문구용 (작은 글씨, 줄바꿈 허용) */
+        .row .val.small {
+            font-size: clamp(11px, 3.4vw, 15px);
+            white-space: normal; line-height: 1.2;
+        }
+
         /* 오른쪽 흰 칸 (위험등급) */
-                .right {
+        .right {
             width: 34%; background: #fff;
             border-left: 2px solid #111;
             display: flex; align-items: center; justify-content: center;
@@ -78,7 +86,7 @@
             <div class="left">
                 <div class="title">이대서울병원 장비점검</div>
                 <div class="row"><span class="lbl">점검자</span><span class="colon">:</span><span id="v-user" class="val"></span></div>
-                <div class="row"><span class="lbl">점검일</span><span class="colon">:</span><span id="v-date" class="val"></span></div>
+                <div class="row"><span class="lbl" id="l-date">점검일</span><span class="colon">:</span><span id="v-date" class="val"></span></div>
             </div>
             <div class="right">
                 <div id="risk-badge" class="risk-badge bg-none">
@@ -93,6 +101,7 @@
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv';
 
         const BLANK_DATE = '20\u2003\u2003.\u2003\u2003.';   // 스티커처럼 빈칸 표시
+        const NO_REPAIR = '당해 수리 발생 없음';
 
         const RISK = {
             'H': { en: 'H', ko: '높음', cls: 'bg-h' },
@@ -145,21 +154,37 @@
                 const data = rows.find(r => String(r[0]) === String(targetID));
                 if (!data) return;
 
-                document.getElementById('ar-view').style.display = 'block';
+                const view = document.getElementById('ar-view');
+                view.style.display = 'block';
 
                 // 점검자 (I열), 비어 있으면 '의공팀'
                 document.getElementById('v-user').innerText = data[8] || '의공팀';
 
-                // 점검일 (H열)
-                const inspDate = toDate(data[7]);
-                document.getElementById('v-date').innerText = fmt(inspDate);
-
                 // 위험등급 (F열)
-                const r = RISK[(data[5] || '').trim().toUpperCase()];
+                const riskKey = (data[5] || '').trim().toUpperCase();
+                const r = RISK[riskKey];
+                const isRepair = riskKey === 'L' || riskKey === 'N';
+
                 const badge = document.getElementById('risk-badge');
                 badge.className = 'risk-badge ' + (r ? r.cls : 'bg-none');
                 document.getElementById('risk-en').innerText = r ? r.en : '-';
                 document.getElementById('risk-ko').innerText = r ? r.ko : '';
+
+                // 날짜 (H열): H·M → 점검일 / L·N → 최근수리일
+                const lDate = document.getElementById('l-date');
+                const vDate = document.getElementById('v-date');
+                const d = toDate(data[7]);
+
+                view.classList.toggle('repair', isRepair);
+                lDate.innerText = isRepair ? '최근수리일' : '점검일';
+
+                if (isRepair && !d) {
+                    vDate.innerText = NO_REPAIR;
+                    vDate.classList.add('small');
+                } else {
+                    vDate.innerText = fmt(d);
+                    vDate.classList.remove('small');
+                }
             } catch (err) { console.error(err); }
         }
         startApp();
