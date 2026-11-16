@@ -84,6 +84,22 @@
         .bg-n { background: linear-gradient(160deg, #3ccf7e, #22a35d); }
         .bg-none { background: #f3f5f4; color: #a3aeaa; border: 1px dashed #cfd6d3; }
 
+        /* 리콜 배너 */
+        .recall {
+            display: none; align-items: center; gap: 10px;
+            margin: 14px 14px 0; padding: 12px 14px; border-radius: 12px;
+            background: #fdecea; border: 1px solid #f5c2bc; color: #b3261e;
+            font-size: 14.5px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.35;
+        }
+        .recall.show { display: flex; }
+        .recall .ic {
+            flex: none; width: 24px; height: 24px; border-radius: 50%;
+            background: #d93025; color: #fff; font-size: 15px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            animation: blink 1.2s ease-in-out infinite;
+        }
+        @keyframes blink { 50% { opacity: 0.35; } }
+
         /* 푸터 */
         .foot {
             display: flex; justify-content: space-between; align-items: center;
@@ -104,6 +120,11 @@
         <div class="head">
             <div class="en">Ewha Womans University Seoul Hospital</div>
             <div class="ko">이대서울병원</div>
+        </div>
+
+        <div id="recall" class="recall">
+            <span class="ic">!</span>
+            <span>리콜장비입니다. 공지사항을 확인하세요</span>
         </div>
 
         <div class="body">
@@ -203,6 +224,10 @@
                 document.getElementById('risk').className = 'risk ' + (r ? r.cls : 'bg-none');
                 document.getElementById('risk-en').innerText = r ? r.en : '-';
                 document.getElementById('risk-ko').innerText = r ? r.ko : '';
+
+                // 리콜사항 (O열): '해당'일 때만 배너 표시 ('해당없음'은 표시 안 함)
+                const recall = (data[14] || '').replace(/\s/g, '');
+                document.getElementById('recall').classList.toggle('show', recall === '해당');
 
                 // 날짜 (H열): H·M → 점검일 / L·N → 최근점검일
                 const d = toDate(data[7]);
