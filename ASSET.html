@@ -100,6 +100,17 @@
         }
         @keyframes blink { 50% { opacity: 0.35; } }
 
+        /* 배터리 안내 */
+        .battery {
+            display: none; align-items: center; gap: 8px;
+            padding: 11px 20px; border-top: 1px solid var(--line);
+            font-size: 13.5px; font-weight: 600; color: var(--ink); letter-spacing: -0.2px;
+        }
+        .battery.show { display: flex; }
+        .battery svg { flex: none; width: 18px; height: 18px; }
+        .battery b { font-weight: 800; color: var(--brand); }
+        .battery.off { color: var(--muted); }
+
         /* 푸터 */
         .foot {
             display: flex; justify-content: space-between; align-items: center;
@@ -143,6 +154,13 @@
                 <div id="risk-en" class="grade">-</div>
                 <div id="risk-ko" class="grade-ko"></div>
             </div>
+        </div>
+
+        <div id="battery" class="battery">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="17" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/>
+            </svg>
+            <span id="battery-text"></span>
         </div>
 
         <div class="foot">
@@ -228,6 +246,23 @@
                 // 리콜사항 (O열): '해당'일 때만 배너 표시 ('해당없음'은 표시 안 함)
                 const recall = (data[14] || '').replace(/\s/g, '');
                 document.getElementById('recall').classList.toggle('show', recall === '해당');
+
+                // 배터리 (P열): 숫자 → 가동시간 / 해당없음 → 비배터리 / 빈칸 → 표시 안 함
+                const bat = (data[15] || '').trim();
+                const batBox = document.getElementById('battery');
+                const batText = document.getElementById('battery-text');
+                if (bat.replace(/\s/g, '') === '해당없음') {
+                    batText.textContent = '배터리 구동 제품이 아닙니다';
+                    batBox.className = 'battery show off';
+                } else if (bat) {
+                    const hours = /^\d+(\.\d+)?$/.test(bat) ? bat + '시간' : bat;
+                    batText.innerHTML = '';
+                    batText.append('배터리 가동시간 ');
+                    const b = document.createElement('b');
+                    b.textContent = hours;
+                    batText.append(b);
+                    batBox.className = 'battery show';
+                }
 
                 // 날짜 (H열): H·M → 점검일 / L·N → 최근점검일
                 const d = toDate(data[7]);
