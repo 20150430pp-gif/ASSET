@@ -257,7 +257,7 @@
                 } else if (bat) {
                     const hours = /^\d+(\.\d+)?$/.test(bat) ? bat + '시간' : bat;
                     batText.innerHTML = '';
-                    batText.append('배터리 가동시간 ');
+                    batText.append('배터리 가동 가능시간 ');
                     const b = document.createElement('b');
                     b.textContent = hours;
                     batText.append(b);
