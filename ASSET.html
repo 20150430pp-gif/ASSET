@@ -109,7 +109,9 @@
         .battery.show { display: flex; }
         .battery svg { flex: none; width: 18px; height: 18px; }
         .battery b { font-weight: 800; color: var(--brand); }
+        .battery svg .fill { color: var(--brand); }
         .battery.off { color: var(--muted); }
+        .battery.off svg .fill { display: none; }
 
         /* 푸터 */
         .foot {
@@ -159,6 +161,7 @@
         <div id="battery" class="battery">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2" y="7" width="17" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/>
+                <rect class="fill" x="4.5" y="9.5" width="12" height="5" rx="0.8" fill="currentColor" stroke="none"/>
             </svg>
             <span id="battery-text"></span>
         </div>
@@ -257,7 +260,7 @@
                 } else if (bat) {
                     const hours = /^\d+(\.\d+)?$/.test(bat) ? bat + '시간' : bat;
                     batText.innerHTML = '';
-                    batText.append('배터리 가동 가능시간 ');
+                    batText.append('배터리 가동시간 ');
                     const b = document.createElement('b');
                     b.textContent = hours;
                     batText.append(b);
