@@ -133,8 +133,8 @@
 
     <div id="ar-view" class="card" style="display: none;">
         <div class="head">
-            <div class="en">Ewha Womans University Seoul Hospital</div>
-            <div class="ko">이대서울병원</div>
+            <div id="h-en" class="en">Ewha Womans University Seoul Hospital</div>
+            <div id="h-ko" class="ko">이대서울병원</div>
         </div>
 
         <div id="recall" class="recall">
@@ -177,6 +177,7 @@
 
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1860433038&single=true&output=csv';
+        const CSV_URL_MOKDONG = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-ztRbBeM4lLwnzXHb1zymeO11NYxFRcCy_KYH90dkD5nZjZlqRvRfgm4QzQyH02nFVZqqXfiGAcwr/pub?gid=1871298882&single=true&output=csv';   // 예방점검대상(목동): 20000번~
 
         const BLANK_DATE = '20\u2003\u2003.\u2003\u2003.';
         const NO_HISTORY = '당해 점검 이력 없음';
@@ -225,11 +226,16 @@
                 const targetID = new URLSearchParams(window.location.search).get('id');
                 if (!targetID) return;
 
-                const res = await fetch(CSV_URL);
+                const res = await fetch(Number(targetID) >= 20000 ? CSV_URL_MOKDONG : CSV_URL);
                 const rows = parseCSV(await res.text());
                 const data = rows.find(r => String(r[0]) === String(targetID));
                 if (!data) return;
 
+                // 20000번 이상: 이대목동병원
+                if (Number(targetID) >= 20000) {
+                    document.getElementById('h-en').innerText = 'Ewha Womans University Mokdong Hospital';
+                    document.getElementById('h-ko').innerText = '이대목동병원';
+                }
                 document.getElementById('ar-view').style.display = 'block';
 
                 // 조회 시각
